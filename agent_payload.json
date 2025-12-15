@@ -1,0 +1,8 @@
+{
+    "name": "Laravel Agent",
+    "avatar_id": "b5bebaf9-ae80-4e43-b97f-4506136ed926",
+    "system_prompt": "You are a helpful assistant.",
+    "llm": {
+        "type": "openai"
+    }
+}

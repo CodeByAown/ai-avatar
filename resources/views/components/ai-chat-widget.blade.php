@@ -1,7 +1,7 @@
 <!-- Ensure Tailwind is available -->
 <script src="https://cdn.tailwindcss.com"></script>
 
-<div x-data="aiAvatar()" class="fixed bottom-5 right-5 z-50" style="font-family: sans-serif;">
+<div x-data="aiAvatar" class="fixed bottom-5 right-5 z-50" style="font-family: sans-serif;">
     <!-- Chat Trigger Button -->
     <button 
         @click="openModal()"
@@ -35,181 +35,223 @@
             </button>
         </div>
 
+        <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+
         <!-- Video Area -->
-        <div class="relative bg-black h-64 flex items-center justify-center">
-            <template x-if="!videoUrl">
+        <div class="relative bg-black h-80 flex items-center justify-center overflow-hidden" x-ref="videoContainer">
+            <template x-if="!room">
                 <div class="text-gray-400 flex flex-col items-center">
                     <div class="animate-pulse bg-gray-700 h-16 w-16 rounded-full mb-2"></div>
-                    <p>Connecting...</p>
+                    <p x-text="statusMessage"></p>
                 </div>
             </template>
-            <video 
-                x-ref="avatarVideo"
-                :src="videoUrl" 
-                class="w-full h-full object-cover" 
-                autoplay 
-                playsinline
-            ></video>
+            <!-- Remote Video Attached Here -->
+            
+            <!-- Local Video Preview -->
+            <div x-show="room" class="absolute bottom-4 right-4 w-24 h-32 bg-gray-900 rounded-lg shadow-lg border-2 border-white overflow-hidden z-20">
+                <div x-ref="localVideoContainer" class="w-full h-full object-cover transform -scale-x-100"></div>
+            </div>
         </div>
 
         <!-- Controls -->
         <div class="p-4 bg-gray-50 flex flex-col gap-3">
             <div class="text-sm text-gray-500 text-center h-6" x-text="statusMessage"></div>
             
-            <div class="flex justify-center">
+            <div class="flex justify-center gap-4">
+                <!-- Toggle Mic -->
                 <button 
-                    @mousedown="startRecording()" 
-                    @mouseup="stopRecording()"
-                    @mouseleave="stopRecording()"
-                    :class="{'bg-red-500 hover:bg-red-600': isRecording, 'bg-blue-600 hover:bg-blue-700': !isRecording}"
-                    class="rounded-full p-4 text-white shadow-md transition-colors duration-200"
+                    @click="toggleMic()" 
+                    :class="{'bg-red-500 hover:bg-red-600': !isMicEnabled, 'bg-gray-200 hover:bg-gray-300 text-gray-700': isMicEnabled}"
+                    class="rounded-full p-3 shadow-md transition-colors duration-200"
+                    title="Toggle Microphone"
                 >
-                    <svg x-show="!isRecording" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <!-- Mic On -->
+                    <svg x-show="isMicEnabled" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                     </svg>
-                    <svg x-show="isRecording" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                    <!-- Mic Off -->
+                    <svg x-show="!isMicEnabled" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18" />
+                    </svg>
+                </button>
+
+                <!-- Toggle Camera -->
+                <button 
+                    @click="toggleCamera()" 
+                    :class="{'bg-red-500 hover:bg-red-600': !isCameraEnabled, 'bg-gray-200 hover:bg-gray-300 text-gray-700': isCameraEnabled}"
+                    class="rounded-full p-3 shadow-md transition-colors duration-200"
+                    title="Toggle Camera"
+                >
+                    <!-- Camera On -->
+                    <svg x-show="isCameraEnabled" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    <!-- Camera Off -->
+                    <svg x-show="!isCameraEnabled" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18" />
+                    </svg>
+                </button>
+
+                <!-- Disconnect -->
+                <button 
+                    @click="closeModal()" 
+                    class="bg-red-600 hover:bg-red-700 text-white rounded-full p-3 shadow-md transition-colors duration-200"
+                    title="End Call"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M5 18a2 2 0 002 2h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8z" /> 
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
             </div>
-            <p class="text-xs text-center text-gray-400">Hold to speak</p>
+            <p class="text-xs text-center text-gray-400">Interactive Video Mode</p>
         </div>
     </div>
 </div>
 
 <script>
-    function aiAvatar() {
-        return {
-            isOpen: false,
-            isRecording: false,
-            videoUrl: null,
-            statusMessage: 'Ready to chat',
-            mediaRecorder: null,
-            audioChunks: [],
+    const setupAiAvatar = () => {
+        Alpine.data('aiAvatar', () => {
+            let room = null; // Non-reactive state for LiveKit Room
 
-            openModal() {
-                this.isOpen = true;
-                this.initSession();
-            },
+            return {
+                isOpen: false,
+                isMicEnabled: true,
+                isCameraEnabled: true,
+                statusMessage: 'Ready to chat',
 
-            closeModal() {
-                this.isOpen = false;
-                if (this.$refs.avatarVideo) {
-                    this.$refs.avatarVideo.pause();
-                }
-            },
+                openModal() {
+                    this.isOpen = true;
+                    this.initSession();
+                },
 
-            async initSession() {
-                this.statusMessage = 'Initializing...';
-                try {
-                    // Check if mediaDevices is supported
-                    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                        throw new Error('Microphone access not supported in this browser or context (HTTPS required).');
+                closeModal() {
+                    this.isOpen = false;
+                    if (room) {
+                        room.disconnect();
+                        room = null;
                     }
+                },
 
-                    // Request mic permission early
-                    await navigator.mediaDevices.getUserMedia({ audio: true });
-                    
-                    const response = await fetch('/api/ai/start');
-                    const data = await response.json();
-                    if (data.status === 'ready') {
-                        this.statusMessage = 'Press and hold to speak';
+                async initSession() {
+                    this.statusMessage = 'Connecting...';
+                    try {
+                        const response = await fetch('/api/ai/start-session', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                            }
+                        });
+                        const data = await response.json();
+
+                        if (data.token && data.url) {
+                            await this.connectToRoom(data.url, data.token);
+                        } else {
+                            this.statusMessage = data.error || 'Failed to start session';
+                            console.error('Session error:', data);
+                        }
+                    } catch (error) {
+                        console.error('Session Init Error:', error);
+                        this.statusMessage = 'Connection failed';
                     }
-                } catch (error) {
-                    console.error('Init failed', error);
-                    this.statusMessage = error.message || 'Error connecting';
-                }
-            },
+                },
 
-            async startRecording() {
-                if (this.isRecording) return;
-                this.isRecording = true;
-                this.statusMessage = 'Listening...';
-                this.audioChunks = [];
+                async connectToRoom(url, token) {
+                    try {
+                        room = new LivekitClient.Room({
+                            adaptiveStream: true,
+                            dynacast: true,
+                            videoCaptureDefaults: {
+                                resolution: LivekitClient.VideoPresets.h720.resolution,
+                            },
+                        });
 
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    this.mediaRecorder = new MediaRecorder(stream);
-                    
-                    this.mediaRecorder.ondataavailable = (event) => {
-                        this.audioChunks.push(event.data);
-                    };
+                        await room.connect(url, token);
+                        this.statusMessage = 'Connected';
 
-                    this.mediaRecorder.start();
-                } catch (error) {
-                    console.error('Mic error', error);
-                    this.isRecording = false;
-                    this.statusMessage = 'Microphone access denied';
-                }
-            },
+                        // Enable Camera and Mic by default for full 2-way experience
+                        await room.localParticipant.enableCameraAndMicrophone();
+                        this.attachLocalVideo();
 
-            async stopRecording() {
-                if (!this.isRecording) return;
-                this.isRecording = false;
-                this.statusMessage = 'Processing...';
+                        room.on(LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
+                            if (track.kind === 'video') {
+                                const element = track.attach();
+                                element.className = 'w-full h-full object-cover';
+                                this.$refs.videoContainer.innerHTML = ''; // Clear placeholder
+                                this.$refs.videoContainer.appendChild(element);
+                                // Re-append the local video container to keep it on top (simple z-index fix)
+                                this.$refs.videoContainer.appendChild(this.$refs.localVideoContainer.parentNode); 
+                            }
+                            if (track.kind === 'audio') {
+                                const element = track.attach();
+                                document.body.appendChild(element);
+                            }
+                        });
 
-                if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
-                    this.mediaRecorder.stop();
-                    
-                    this.mediaRecorder.onstop = async () => {
-                        const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-                        await this.sendAudio(audioBlob);
-                    };
-                }
-            },
-
-            async sendAudio(audioBlob) {
-                // For this MVP, we'll simulate STT by sending a dummy text if we can't do real STT in browser easily without an API key.
-                // Ideally, we'd send the blob to the backend.
-                // Let's assume the backend can handle the blob or we use the Web Speech API for STT on the client.
-                
-                // Using Web Speech API for client-side STT (simpler for MVP)
-                if ('webkitSpeechRecognition' in window) {
-                    // Actually, we should have done this during recording. 
-                    // Let's fallback to a simpler text input for the MVP if STT is complex, 
-                    // but the user asked for "Speak using microphone".
-                    // I'll implement a simple mock or assume the backend handles it.
-                    // For now, let's send a text message "Hello" to test the flow, 
-                    // or use the Web Speech API.
-                }
-
-                // REAL IMPLEMENTATION: Send audio to backend (or use Web Speech API)
-                // Here I will use Web Speech API to get text, then send text to backend.
-                
-                this.statusMessage = 'Thinking...';
-                
-                // Mocking the STT for the "video" flow since I can't easily speak into the browser in this environment.
-                // In a real app, we'd use the SpeechRecognition API.
-                
-                const text = "Hello, tell me about your services."; // Placeholder for actual STT result
-                
-                try {
-                    const response = await fetch('/api/ai/process', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                        },
-                        body: JSON.stringify({ text: text })
-                    });
-
-                    const data = await response.json();
-                    
-                    if (data.video_url) {
-                        this.videoUrl = data.video_url;
-                        this.$refs.avatarVideo.play();
-                        this.statusMessage = 'Speaking...';
+                        room.on(LivekitClient.RoomEvent.Disconnected, () => {
+                            this.statusMessage = 'Disconnected';
+                            room = null;
+                        });
                         
-                        this.$refs.avatarVideo.onended = () => {
-                            this.statusMessage = 'Press and hold to speak';
-                        };
+                        room.on(LivekitClient.RoomEvent.LocalTrackUnpublished, (publication) => {
+                             // Update state if tracks are externally modified
+                             if (publication.kind === 'audio') this.isMicEnabled = false;
+                             if (publication.kind === 'video') this.isCameraEnabled = false;
+                        });
+
+                    } catch (error) {
+                        console.error('LiveKit Connection Error:', error);
+                        this.statusMessage = 'Video connection failed: ' + error.message;
                     }
-                } catch (error) {
-                    console.error('API Error', error);
-                    this.statusMessage = 'Error getting response';
-                }
-            }
-        }
+                },
+
+                attachLocalVideo() {
+                     if (!room || !room.localParticipant) return;
+                     
+                     const videoTrack = Array.from(room.localParticipant.videoTrackPublications.values())
+                        .map(pub => pub.track)
+                        .find(track => track && track.kind === 'video');
+
+                     if (videoTrack) {
+                         const element = videoTrack.attach();
+                         element.className = 'w-full h-full object-cover';
+                         this.$refs.localVideoContainer.innerHTML = '';
+                         this.$refs.localVideoContainer.appendChild(element);
+                     }
+                },
+
+                async toggleMic() {
+                    if (!room) return;
+                    const current = room.localParticipant.isMicrophoneEnabled;
+                    await room.localParticipant.setMicrophoneEnabled(!current);
+                    this.isMicEnabled = !current;
+                },
+
+                async toggleCamera() {
+                    if (!room) return;
+                    const current = room.localParticipant.isCameraEnabled;
+                    await room.localParticipant.setCameraEnabled(!current);
+                    this.isCameraEnabled = !current;
+                    
+                    if (!current) { // If we just enabled it
+                         // Wait a tick for track to publish then attach
+                         setTimeout(() => this.attachLocalVideo(), 500);
+                    } else {
+                         this.$refs.localVideoContainer.innerHTML = ''; // Clear preview
+                    }
+                },
+            };
+        });
+    };
+
+    if (document.addEventListener) {
+        document.addEventListener('alpine:init', setupAiAvatar);
+    } else {
+        // Fallback or immediate execution if Alpine is already loaded (though alpine:init is event based)
+        // Check if Alpine global exists and manually register if needed, though listener is safest.
+        setupAiAvatar();
     }
 </script>

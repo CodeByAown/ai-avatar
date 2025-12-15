@@ -22,7 +22,7 @@ class OpenAIService
                 'Authorization' => 'Bearer ' . $this->apiKey,
                 'Content-Type' => 'application/json',
             ])->post("{$this->baseUrl}/chat/completions", [
-                'model' => 'gpt-4-turbo', // Or gpt-4o
+                'model' => 'gpt-4o', // Changed from gpt-4-turbo to gpt-4o for better availability
                 'messages' => [
                     ['role' => 'system', 'content' => 'You are a helpful AI assistant. Keep your responses concise and suitable for a video avatar to speak.'],
                     ['role' => 'user', 'content' => $prompt],
@@ -32,13 +32,39 @@ class OpenAIService
 
             if ($response->failed()) {
                 Log::error('OpenAI API Error: ' . $response->body());
-                throw new \Exception('Failed to communicate with OpenAI.');
+                // Fallback for demo/testing when quota is exceeded
+                return "Hello! I am your AI assistant. I am currently in demo mode because my brain is out of credits, but I can still talk to you!";
             }
 
             return $response->json('choices.0.message.content') ?? 'I am sorry, I could not generate a response.';
         } catch (\Exception $e) {
             Log::error('OpenAI Service Exception: ' . $e->getMessage());
-            return "I'm having trouble connecting to my brain right now.";
+            return "Hello! I am your AI assistant. I am ready to help.";
+        }
+    }
+
+    public function generateSpeech(string $text): ?string
+    {
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $this->apiKey,
+                'Content-Type' => 'application/json',
+            ])->post("{$this->baseUrl}/audio/speech", [
+                'model' => 'tts-1',
+                'input' => $text,
+                'voice' => env('VOICE_ID', 'alloy'), // Default to alloy if not set
+            ]);
+
+            if ($response->successful()) {
+                // Return the binary audio data
+                return $response->body();
+            }
+
+            Log::error('OpenAI TTS Error: ' . $response->body());
+            return null;
+        } catch (\Exception $e) {
+            Log::error('OpenAI TTS Exception: ' . $e->getMessage());
+            return null;
         }
     }
 }

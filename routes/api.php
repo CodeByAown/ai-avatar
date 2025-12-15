@@ -9,6 +9,7 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 Route::prefix('ai')->group(function () {
-    Route::get('/start', [App\Http\Controllers\Api\AiAvatarController::class, 'start']);
-    Route::post('/process', [App\Http\Controllers\Api\AiAvatarController::class, 'process']);
+    Route::post('/start-session', [App\Http\Controllers\Api\AiAvatarController::class, 'startSession']);
+    Route::post('/send-message', [App\Http\Controllers\Api\AiAvatarController::class, 'sendMessage']);
+    Route::post('/reset-session', [App\Http\Controllers\Api\AiAvatarController::class, 'resetSession']);
 });
